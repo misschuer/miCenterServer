@@ -8,10 +8,12 @@ import org.ini4j.Ini;
 import org.ini4j.Profile.Section;
 
 import cc.mi.center.net.Server;
+import cc.mi.center.system.SystemManager;
 
 public class Startup {
 	private static final String CENTER_SERVER = "centerServer";
 	private static final String PORT = "port";
+	private static final String SCENES = "scenes";
 	
 	private static void loadConfig() throws NumberFormatException, Exception {
 		Config cfg = new Config();
@@ -23,6 +25,8 @@ public class Startup {
         	ini.load(url);
 
         	Section section = ini.get(CENTER_SERVER);
+        	int sceneCount = Integer.parseInt(section.get(SCENES));
+        	SystemManager.setSceneCount(sceneCount);
         	Server.run(Integer.parseInt(section.get(PORT)));
         } catch (IOException e) {
         	e.printStackTrace();

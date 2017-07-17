@@ -1,6 +1,12 @@
 package cc.mi.center.net;
 
+import cc.mi.center.system.SystemManager;
+import cc.mi.center.task.DealCenterDataTask;
+import cc.mi.center.task.DealClientDataTask;
+import cc.mi.center.task.DealInnerDataTask;
+import cc.mi.center.task.SendDataToClientTask;
 import cc.mi.core.coder.Coder;
+import cc.mi.core.constance.IdentityConst;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
@@ -8,7 +14,7 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 	
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-		System.out.println("center server建立连接" + System.currentTimeMillis());
+		System.out.println("a socket connected" + System.currentTimeMillis());
 	}
 	
 	@Override
@@ -18,7 +24,20 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 	
 	@Override
 	public void channelRead0(final ChannelHandlerContext ctx, final Coder msg) throws Exception {
-
+		
+		if (msg.getInternalDestFD() == 0) {
+			// 处理内部传输给中心服的
+			SystemManager.submitTask(new DealCenterDataTask(ctx.channel(), msg));
+		} else if (msg.getInternalDestFD() == -2) {
+			// 处理网关服来的
+			SystemManager.submitTask(new DealClientDataTask(msg));
+		} else if (msg.getInternalDestFD() == -1) {
+			// 给客户端的
+			SystemManager.submitTask(new SendDataToClientTask(SystemManager.getGateChannel(), msg));
+		} else {
+			// 处理内部传输的
+			SystemManager.submitTask(new DealInnerDataTask(msg));
+		}
 	}
 
 	@Override
@@ -29,7 +48,13 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 	
 	 @Override
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		 System.out.println("与网关服断开连接");
+		 String name = "unknow";
+		 Byte identity = SystemManager.getChannelId(ctx.channel());
+		 if (identity != null) {
+			 name = IdentityConst.getServerName(identity);
+		 }
+		 System.out.println(String.format("%s is disconnected", name));
+		 SystemManager.channelInactived(ctx.channel());
 		 ctx.fireChannelInactive();
     }
 }
