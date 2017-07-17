@@ -13,6 +13,7 @@ import cc.mi.center.handler.RegIdentityHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
 import cc.mi.core.coder.Coder;
 import cc.mi.core.constance.IdentityConst;
+import cc.mi.core.constance.MsgConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.handler.Handler;
 import cc.mi.core.task.base.Task;
@@ -136,7 +137,7 @@ public final class SystemManager {
 	}
 	
 	private static Channel getChannelByFd(int fd) {
-		if (fd == -1) {
+		if (fd == MsgConst.MSG_TO_CLIENT) {
 			return gateChannel;
 		}
 		return channels[ fd ];

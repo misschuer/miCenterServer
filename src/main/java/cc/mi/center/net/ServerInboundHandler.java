@@ -6,6 +6,7 @@ import cc.mi.center.task.DealClientDataTask;
 import cc.mi.center.task.SendDataTask;
 import cc.mi.core.coder.Coder;
 import cc.mi.core.constance.IdentityConst;
+import cc.mi.core.constance.MsgConst;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
@@ -24,10 +25,10 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 	@Override
 	public void channelRead0(final ChannelHandlerContext ctx, final Coder msg) throws Exception {
 		
-		if (msg.getInternalDestFD() == 0) {
+		if (msg.getInternalDestFD() == MsgConst.MSG_TO_CENTER) {
 			// 处理内部传输给中心服的
 			SystemManager.submitTask(new DealCenterDataTask(ctx.channel(), msg));
-		} else if (msg.getInternalDestFD() == -2) {
+		} else if (msg.getInternalDestFD() == MsgConst.MSG_FROM_CLIENT) {
 			// 处理网关服来的
 			SystemManager.submitTask(new DealClientDataTask(msg));
 		} else {
