@@ -2,14 +2,17 @@ package cc.mi.center.system;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import cc.mi.center.handler.RegIdentityHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
+import cc.mi.core.coder.Coder;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.handler.Handler;
@@ -117,6 +120,15 @@ public final class SystemManager {
 		return channel.attr(CHANNEL_ID).get();
 	}
 	
+	public static void sendMsgToInner(Coder coder) {
+		int opcode = coder.getOpcode();
+		for (Entry<Byte, Set<Integer>> entry : serverOpcodeHash.entrySet()) {
+			if (entry.getValue().contains(opcode)) {
+				sendMsgByFd(entry.getKey(), coder);
+			}
+		}
+	}
+	
 	public static void regOpcode(Channel channel, List<Integer> opcodes) {
 		byte id = getChannelId(channel);
 		Set<Integer> opcodeSet = new HashSet<>();
@@ -124,7 +136,21 @@ public final class SystemManager {
 		serverOpcodeHash.put(id, opcodeSet);
 	}
 	
-	public static Channel getGateChannel() {
-		return gateChannel;
+	private static Channel getChannelByFd(int fd) {
+		if (fd == -1) {
+			return gateChannel;
+		}
+		return channels[ fd ];
+	}
+	
+	public static void sendMsgByFd(int fd, Coder coder) {
+		Channel channel = getChannelByFd(fd);
+		sendMsg(channel, coder);
+	}
+	
+	public static void sendMsg(Channel channel, Coder coder) {
+		if (channel != null && !channel.isActive()) {
+			channel.writeAndFlush(coder);
+		}
 	}
 }

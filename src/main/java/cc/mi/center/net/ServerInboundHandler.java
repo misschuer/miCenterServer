@@ -3,8 +3,7 @@ package cc.mi.center.net;
 import cc.mi.center.system.SystemManager;
 import cc.mi.center.task.DealCenterDataTask;
 import cc.mi.center.task.DealClientDataTask;
-import cc.mi.center.task.DealInnerDataTask;
-import cc.mi.center.task.SendDataToClientTask;
+import cc.mi.center.task.SendDataTask;
 import cc.mi.core.coder.Coder;
 import cc.mi.core.constance.IdentityConst;
 import io.netty.channel.ChannelHandlerContext;
@@ -31,12 +30,9 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 		} else if (msg.getInternalDestFD() == -2) {
 			// 处理网关服来的
 			SystemManager.submitTask(new DealClientDataTask(msg));
-		} else if (msg.getInternalDestFD() == -1) {
-			// 给客户端的
-			SystemManager.submitTask(new SendDataToClientTask(SystemManager.getGateChannel(), msg));
 		} else {
-			// 处理内部传输的
-			SystemManager.submitTask(new DealInnerDataTask(msg));
+			// 处理从内部服务器发过来的
+			SystemManager.submitTask(new SendDataTask(msg.getInternalDestFD(), msg));
 		}
 	}
 
