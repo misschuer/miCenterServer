@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import cc.mi.center.handler.CreateConnectionHandler;
+import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.RegIdentityHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
 import cc.mi.core.coder.Coder;
@@ -29,7 +31,7 @@ public final class SystemManager {
 	private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 	
 	// 句柄
-	public static final Handler<?>[] handlers = new Handler[1<<12];
+	private static final Handler[] handlers = new Handler[1<<12];
 	
 	// 
 	private static final Channel[] channels = new Channel[1<<4];
@@ -46,6 +48,12 @@ public final class SystemManager {
 	static {
 		handlers[Opcodes.MSG_SERVERREGOPCODE] = new RegOpcodeHandler();
 		handlers[Opcodes.MSG_SERVERREGIDENTITY] = new RegIdentityHandler();
+		handlers[Opcodes.MSG_CREATECONNECTION] = new CreateConnectionHandler();
+		handlers[Opcodes.MSG_DESTROYCONNECTION] = new DestroyConnectionHandler();
+	}
+	
+	public static Handler getHandler(int opcode) {
+		return handlers[opcode];
 	}
 
 	// 提交客户端过来的任务
@@ -137,7 +145,7 @@ public final class SystemManager {
 	}
 	
 	private static Channel getChannelByFd(int fd) {
-		if (fd == MsgConst.MSG_TO_CLIENT) {
+		if (fd == MsgConst.MSG_TO_GATE) {
 			return gateChannel;
 		}
 		return channels[ fd ];

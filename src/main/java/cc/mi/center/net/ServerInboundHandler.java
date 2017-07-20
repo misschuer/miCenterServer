@@ -28,7 +28,7 @@ public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
 		if (msg.getInternalDestFD() == MsgConst.MSG_TO_CENTER) {
 			// 处理内部传输给中心服的
 			SystemManager.submitTask(new DealCenterDataTask(ctx.channel(), msg));
-		} else if (msg.getInternalDestFD() == MsgConst.MSG_FROM_CLIENT) {
+		} else if (msg.getInternalDestFD() == MsgConst.MSG_FROM_GATE) {
 			// 处理网关服来的
 			SystemManager.submitTask(new DealClientDataTask(msg));
 		} else {

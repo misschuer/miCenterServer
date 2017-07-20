@@ -15,7 +15,7 @@ public class DealCenterDataTask extends AbstractCoderTask {
 	
 	@Override
 	protected void doTask() {
-		Handler<?> handler = SystemManager.handlers[coder.getOpcode()];
+		Handler handler = SystemManager.getHandler(coder.getOpcode());
 		handler.handle(null, this.channel, coder);
 	}
 
