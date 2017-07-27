@@ -10,7 +10,7 @@ import cc.mi.core.constance.MsgConst;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
-public class ServerInboundHandler extends SimpleChannelInboundHandler<Coder> {
+public class CenterHandler extends SimpleChannelInboundHandler<Coder> {
 	
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
