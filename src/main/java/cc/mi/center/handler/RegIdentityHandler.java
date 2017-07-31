@@ -1,6 +1,6 @@
 package cc.mi.center.handler;
 
-import cc.mi.center.system.SystemManager;
+import cc.mi.center.system.CenterSystemManager;
 import cc.mi.core.coder.Coder;
 import cc.mi.core.generate.msg.ServerRegIdentity;
 import cc.mi.core.handler.AbstractHandler;
@@ -12,6 +12,6 @@ public class RegIdentityHandler extends AbstractHandler {
 	@Override
 	public void handle(ServerContext player, Channel channel, Coder decoder) {
 		ServerRegIdentity coder = (ServerRegIdentity) decoder;
-		SystemManager.channelRegIdentity(channel, coder.getIdentity());
+		CenterSystemManager.channelRegIdentity(channel, coder.getIdentity());
 	}
 }

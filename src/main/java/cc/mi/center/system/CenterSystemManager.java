@@ -23,7 +23,7 @@ import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 
-public final class SystemManager {
+public final class CenterSystemManager {
 	// 通道的id属性
 	private static final AttributeKey<Byte> CHANNEL_ID = AttributeKey.valueOf("channel_id");
 	

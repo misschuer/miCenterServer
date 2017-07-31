@@ -1,6 +1,6 @@
 package cc.mi.center.task;
 
-import cc.mi.center.system.SystemManager;
+import cc.mi.center.system.CenterSystemManager;
 import cc.mi.core.coder.Coder;
 import cc.mi.core.handler.Handler;
 import cc.mi.core.task.base.AbstractCoderTask;
@@ -15,7 +15,7 @@ public class DealCenterDataTask extends AbstractCoderTask {
 	
 	@Override
 	protected void doTask() {
-		Handler handler = SystemManager.getHandler(coder.getOpcode());
+		Handler handler = CenterSystemManager.getHandler(coder.getOpcode());
 		handler.handle(null, this.channel, coder);
 	}
 

@@ -1,6 +1,6 @@
 package cc.mi.center.net;
 
-import cc.mi.center.system.SystemManager;
+import cc.mi.center.system.CenterSystemManager;
 import cc.mi.center.task.DealCenterDataTask;
 import cc.mi.center.task.DealClientDataTask;
 import cc.mi.center.task.SendDataTask;
@@ -27,13 +27,13 @@ public class CenterHandler extends SimpleChannelInboundHandler<Coder> {
 		
 		if (msg.getInternalDestFD() == MsgConst.MSG_TO_CENTER) {
 			// 处理内部传输给中心服的
-			SystemManager.submitTask(new DealCenterDataTask(ctx.channel(), msg));
+			CenterSystemManager.submitTask(new DealCenterDataTask(ctx.channel(), msg));
 		} else if (msg.getInternalDestFD() == MsgConst.MSG_FROM_GATE) {
 			// 处理网关服来的
-			SystemManager.submitTask(new DealClientDataTask(msg));
+			CenterSystemManager.submitTask(new DealClientDataTask(msg));
 		} else {
 			// 处理从内部服务器发过来的
-			SystemManager.submitTask(new SendDataTask(msg.getInternalDestFD(), msg));
+			CenterSystemManager.submitTask(new SendDataTask(msg.getInternalDestFD(), msg));
 		}
 	}
 
@@ -46,12 +46,12 @@ public class CenterHandler extends SimpleChannelInboundHandler<Coder> {
 	 @Override
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
 		 String name = "unknow";
-		 Byte identity = SystemManager.getChannelId(ctx.channel());
+		 Byte identity = CenterSystemManager.getChannelId(ctx.channel());
 		 if (identity != null) {
 			 name = IdentityConst.getServerName(identity);
 		 }
 		 System.out.println(String.format("%s is disconnected", name));
-		 SystemManager.channelInactived(ctx.channel());
+		 CenterSystemManager.channelInactived(ctx.channel());
 		 ctx.fireChannelInactive();
     }
 }
