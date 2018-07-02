@@ -1,6 +1,6 @@
 package cc.mi.center;
 
-import cc.mi.core.coder.Coder;
+import cc.mi.core.coder.Packet;
 import cc.mi.core.server.ServerContext;
 
 public class CenterContext extends ServerContext {
@@ -10,7 +10,7 @@ public class CenterContext extends ServerContext {
 	}
 	
 	@Override
-	protected void send(Coder coder) {
+	protected void send(Packet coder) {
 		// TODO Auto-generated method stub
 
 	}

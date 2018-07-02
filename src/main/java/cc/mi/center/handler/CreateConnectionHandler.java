@@ -2,7 +2,7 @@ package cc.mi.center.handler;
 
 import cc.mi.center.CenterContext;
 import cc.mi.center.system.CenterSystemManager;
-import cc.mi.core.coder.Coder;
+import cc.mi.core.coder.Packet;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.msg.CreateConnection;
 import cc.mi.core.handler.AbstractHandler;
@@ -12,16 +12,16 @@ import io.netty.channel.Channel;
 public class CreateConnectionHandler extends AbstractHandler {
 
 	@Override
-	public void handle(ServerContext player, Channel channel, Coder decoder) {
-		if (CenterSystemManager.getChannelId(channel) == IdentityConst.IDENDITY_GATE) {
-			CreateConnection cc = (CreateConnection)decoder;
-			CenterContext context = new CenterContext(cc.getFd());
-			context.setRemoteIp(cc.getRemoteIp());
-			context.setRemotePort(cc.getRemotePort());
-			
-			// 发给其他服务端
-			CenterSystemManager.sendMsgToInner(decoder);
-		}
+	public void handle(ServerContext player, Channel channel, Packet decoder) {
+//		if (CenterSystemManager.getChannelId(channel) == IdentityConst.SERVER_TYPE_GATE) {
+//			CreateConnection cc = (CreateConnection)decoder;
+//			CenterContext context = new CenterContext(cc.getFd());
+//			context.setRemoteIp(cc.getRemoteIp());
+//			context.setRemotePort(cc.getRemotePort());
+//			
+//			// 发给其他服务端
+//			CenterSystemManager.sendMsgToInner(decoder);
+//		}
 	}
 
 }

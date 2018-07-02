@@ -10,10 +10,11 @@ import org.ini4j.Profile.Section;
 import cc.mi.core.constance.NetConst;
 
 public class ServerConfig {
-	private static final String SCENES = "scenes";
-	private static final String CENTER_SERVER = "centerServer";
-	private static int port;
-	private static int sceneCount;
+	private static final String CENTER_SERVER = "center";
+	private static final String GATE_SERVER = "gate";
+	private static String gate_ip;
+	private static int center_port;
+	private static int gate_port;
 	
 	public static void loadConfig() throws NumberFormatException, Exception {
 		Config cfg = new Config();
@@ -25,18 +26,25 @@ public class ServerConfig {
         	ini.load(url);
 
         	Section section = ini.get(CENTER_SERVER);
-        	port = Integer.parseInt(section.get(NetConst.PORT));
-        	sceneCount = Integer.parseInt(section.get(SCENES));
+        	center_port = Integer.parseInt(section.get(NetConst.PORT));
+        	
+        	Section section2 = ini.get(GATE_SERVER);
+        	gate_port = Integer.parseInt(section2.get(NetConst.PORT));
+        	gate_ip = section2.get(NetConst.IP);
         } catch (IOException e) {
         	e.printStackTrace();
 	    }  
 	}
 
-	public static int getPort() {
-		return port;
+	public static int getCenterPort() {
+		return center_port;
 	}
-
-	public static int getSceneCount() {
-		return sceneCount;
+	
+	public static int getGatePort() {
+		return gate_port;
+	}
+	
+	public static String getGateIp() {
+		return gate_ip;
 	}
 }
