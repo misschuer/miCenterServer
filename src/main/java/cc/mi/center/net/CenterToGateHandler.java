@@ -1,8 +1,9 @@
 package cc.mi.center.net;
 
-import cc.mi.core.coder.Packet;
+import cc.mi.center.server.CenterServerManager;
 import cc.mi.core.handler.ChannelHandlerGenerator;
 import cc.mi.core.log.CustomLogger;
+import cc.mi.core.packet.Packet;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -12,7 +13,7 @@ public class CenterToGateHandler extends SimpleChannelInboundHandler<Packet> imp
 	
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-//		CenterSystemManager.INSTANCE.onGateConnected(ctx.channel());
+		CenterServerManager.INSTANCE.onGateConnected(ctx.channel());
 	}
 	
 	@Override
@@ -28,7 +29,7 @@ public class CenterToGateHandler extends SimpleChannelInboundHandler<Packet> imp
 	
 	@Override
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-		logger.devLog("inactive to gate");
+		CenterServerManager.INSTANCE.onGateDisconnected(ctx.channel());
 		ctx.fireChannelInactive();
     }
 

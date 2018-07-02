@@ -1,11 +1,11 @@
 package cc.mi.center.handler;
 
 import cc.mi.center.CenterContext;
-import cc.mi.center.system.CenterSystemManager;
-import cc.mi.core.coder.Packet;
+import cc.mi.center.server.CenterServerManager;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.msg.DestroyConnection;
 import cc.mi.core.handler.AbstractHandler;
+import cc.mi.core.packet.Packet;
 import cc.mi.core.server.ContextManager;
 import cc.mi.core.server.ServerContext;
 import io.netty.channel.Channel;

@@ -1,18 +1,19 @@
 package cc.mi.center.net;
 
-import cc.mi.center.system.CenterSystemManager;
+import cc.mi.center.server.CenterServerManager;
 import cc.mi.center.task.DealInnerDataTask;
-import cc.mi.core.coder.Packet;
+import cc.mi.core.handler.ChannelHandlerGenerator;
 import cc.mi.core.log.CustomLogger;
+import cc.mi.core.packet.Packet;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
-public class CenterHandler extends SimpleChannelInboundHandler<Packet> {
+public class CenterHandler extends SimpleChannelInboundHandler<Packet> implements ChannelHandlerGenerator {
 	static final CustomLogger logger = CustomLogger.getLogger(CenterHandler.class);
 	
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-		logger.devLog("an inner server connected to center");
 	}
 	
 	@Override
@@ -21,7 +22,7 @@ public class CenterHandler extends SimpleChannelInboundHandler<Packet> {
 		if (fd > 0) {
 			// send to inner server
 		} else {
-			CenterSystemManager.INSTANCE.submitTask(new DealInnerDataTask(ctx.channel(), msg));
+			CenterServerManager.INSTANCE.submitTask(new DealInnerDataTask(ctx.channel(), msg));
 		}
 	}
 
@@ -33,14 +34,12 @@ public class CenterHandler extends SimpleChannelInboundHandler<Packet> {
 	
 	 @Override
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
-//		 String name = "unknow";
-//		 Byte identity = CenterSystemManager.getChannelId(ctx.channel());
-//		 if (identity != null) {
-//			 name = IdentityConst.getServerName(identity);
-//		 }
-//		 System.out.println(String.format("%s is disconnected", name));
-//		 CenterSystemManager.channelInactived(ctx.channel());
-		 logger.devLog("an inner server channelInactive");
+		 CenterServerManager.INSTANCE.onInnerServertDisconnected(ctx.channel());
 		 ctx.fireChannelInactive();
     }
+
+	@Override
+	public ChannelHandler newChannelHandler() {
+		return new CenterHandler();
+	}
 }

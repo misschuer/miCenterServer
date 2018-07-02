@@ -1,7 +1,7 @@
 package cc.mi.center.task;
 
-import cc.mi.center.system.CenterSystemManager;
-import cc.mi.core.coder.Packet;
+import cc.mi.center.server.CenterServerManager;
+import cc.mi.core.packet.Packet;
 import cc.mi.core.task.base.AbstractCoderTask;
 
 public class DealClientDataTask extends AbstractCoderTask {

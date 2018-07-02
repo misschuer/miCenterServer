@@ -1,4 +1,4 @@
-package cc.mi.center.system;
+package cc.mi.center.server;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,20 +12,21 @@ import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
 import cc.mi.center.handler.RegIdentityHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
-import cc.mi.core.coder.Packet;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.generate.msg.IdentityServerMsg;
+import cc.mi.core.generate.msg.ServerStartFinishMsg;
 import cc.mi.core.handler.Handler;
 import cc.mi.core.log.CustomLogger;
+import cc.mi.core.packet.Packet;
 import cc.mi.core.task.base.Task;
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
 
-public enum CenterSystemManager {
+public enum CenterServerManager {
 	INSTANCE;
 	
-	private static final CustomLogger logger = CustomLogger.getLogger(CenterSystemManager.class);
+	private static final CustomLogger logger = CustomLogger.getLogger(CenterServerManager.class);
 	
 	// 固定线程线程逻辑
 	private final ExecutorService executor = Executors.newFixedThreadPool(4);
@@ -41,15 +42,17 @@ public enum CenterSystemManager {
 	
 	private Channel gateChannel;
 	
+	private boolean centerBootstrap = false;
+	
 	// 注册的opcode
 	private final Map<Byte, Set<Integer>> serverOpcodeHash = new HashMap<>();
 	
-	private CenterSystemManager() {
+	private CenterServerManager() {
 		handlers[Opcodes.MSG_SERVERREGOPCODE] = new RegOpcodeHandler();
 		handlers[Opcodes.MSG_SERVERREGIDENTITY] = new RegIdentityHandler();
 		handlers[Opcodes.MSG_CREATECONNECTION] = new CreateConnectionHandler();
 		handlers[Opcodes.MSG_DESTROYCONNECTION] = new DestroyConnectionHandler();
-		handlers[Opcodes.MSG_SERVERSTARTFINISHMSG] = new IdentityServerTypeHandler();
+		handlers[Opcodes.MSG_IDENTITYSERVERMSG] = new IdentityServerTypeHandler();
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
@@ -64,12 +67,47 @@ public enum CenterSystemManager {
 		executor.submit(task);
 	}
 	
+	
 	/**
-	 * 内部服务器连进来了
-	 * @param channel
+	 * 只需要登录服, 应用服,场景服,(日志服非必须)
 	 */
-	public void onInnerServerConnected(Channel channel) {
-		//TODO: 再判断
+	private void checkAllServerFound() {
+		int servers = 3;
+		boolean vist = true;
+		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_LOGIN)) {
+			vist = false;
+		}
+		
+		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_APP)) {
+			vist = false;
+		}
+		
+		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_RECORD)) {
+			servers --;
+		}
+		
+		if (innerChannelHash.size() == servers) {
+			vist = false;
+		}
+		
+		if (!this.centerBootstrap && vist) {
+			logger.devLog("all server found");
+		} else if (this.centerBootstrap && !vist) {
+			logger.devLog("some servers is not found");
+		}
+		
+		if (vist != this.centerBootstrap) {
+			this.centerBootstrap = vist;
+			this.noticeGateBootstrap();
+		}
+	}
+	
+	private void noticeGateBootstrap() {
+		ServerStartFinishMsg msg = new ServerStartFinishMsg();
+		msg.setBootstrap(this.centerBootstrap);
+		if (this.gateChannel != null && this.gateChannel.isActive()) {
+			this.gateChannel.writeAndFlush(msg);
+		}
 	}
 	
 	/**
@@ -99,6 +137,7 @@ public enum CenterSystemManager {
 		innerChannelHash.put(fd, channel);
 		
 		logger.devLog("identity fd = {} serverType = {}", fd, serverType);
+		this.checkAllServerFound();
 	}
 	
 	/**
@@ -108,6 +147,7 @@ public enum CenterSystemManager {
 	public void onInnerServertDisconnected(Channel channel) {
 		int fd = getChannelFd(channel);
 		innerChannelHash.remove(fd);
+		this.checkAllServerFound();
 	}
 	
 	public int getChannelFd(Channel channel) {
@@ -125,6 +165,18 @@ public enum CenterSystemManager {
 			throw new RuntimeException("set gate channel with null");
 		this.gateChannel = gateChannel;
 		this.indentityServer(this.gateChannel);
+		// 连上以后
+		if (this.centerBootstrap) {
+			this.noticeGateBootstrap();
+		}
+	}
+	
+	public void onGateDisconnected(Channel gateChannel) {
+		if (this.gateChannel == gateChannel) {
+			this.gateChannel = null;
+			return;
+		}
+		throw new RuntimeException("与网关服断开连接, 但是断开的channel不是this.gateChannel");
 	}
 	
 	/**
