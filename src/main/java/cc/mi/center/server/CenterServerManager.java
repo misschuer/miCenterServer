@@ -1,8 +1,9 @@
 package cc.mi.center.server;
 
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -10,9 +11,9 @@ import java.util.concurrent.Executors;
 import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
-import cc.mi.center.handler.RegIdentityHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
 import cc.mi.core.constance.IdentityConst;
+import cc.mi.core.constance.TaskDirectConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.generate.msg.IdentityServerMsg;
 import cc.mi.core.generate.msg.ServerStartFinishMsg;
@@ -28,11 +29,17 @@ public enum CenterServerManager {
 	
 	private static final CustomLogger logger = CustomLogger.getLogger(CenterServerManager.class);
 	
-	// 固定线程线程逻辑
-	private final ExecutorService executor = Executors.newFixedThreadPool(4);
+	// 逻辑线程组 给它进行负载均衡
+	// 还能保证每个客户端的消息一定是有序的
+	private final ExecutorService[] clientInGroup;
+	private final ExecutorService[] clientOutGroup;
+	private static final int GROUP_SIZE = 4;
+	private static final int MOD = GROUP_SIZE - 1;
 	
 	// 通道的id属性
 	private final AttributeKey<Integer> CHANNEL_ID = AttributeKey.valueOf("channel_id");
+	// 
+	private final AttributeKey<ServerOpcode> SERVER_OPCODE = AttributeKey.valueOf("ServerOpcode");
 	
 	// 内部服务器通道列表
 	private final Map<Integer, Channel> innerChannelHash = new ConcurrentHashMap<>();
@@ -44,12 +51,19 @@ public enum CenterServerManager {
 	
 	private boolean centerBootstrap = false;
 	
-	// 注册的opcode
-	private final Map<Byte, Set<Integer>> serverOpcodeHash = new HashMap<>();
-	
 	private CenterServerManager() {
+		// 初始化线程组, 数量一定要2的幂, 否则会导致分配线程逻辑错误
+		clientInGroup = new ExecutorService[GROUP_SIZE];
+		for (int i = 0; i< GROUP_SIZE; ++ i) {
+			clientInGroup[ i ] = Executors.newFixedThreadPool(1);
+		}
+		
+		clientOutGroup = new ExecutorService[GROUP_SIZE];
+		for (int i = 0; i< GROUP_SIZE; ++ i) {
+			clientOutGroup[ i ] = Executors.newFixedThreadPool(1);
+		}
+		
 		handlers[Opcodes.MSG_SERVERREGOPCODE] = new RegOpcodeHandler();
-		handlers[Opcodes.MSG_SERVERREGIDENTITY] = new RegIdentityHandler();
 		handlers[Opcodes.MSG_CREATECONNECTION] = new CreateConnectionHandler();
 		handlers[Opcodes.MSG_DESTROYCONNECTION] = new DestroyConnectionHandler();
 		handlers[Opcodes.MSG_IDENTITYSERVERMSG] = new IdentityServerTypeHandler();
@@ -62,9 +76,24 @@ public enum CenterServerManager {
 		}
 	}
 
-	// 提交客户端过来的任务
-	public void submitTask(Task task) {
-		executor.submit(task);
+	/**
+	 * 
+	 * @param direct 朝向, 是网关服进消息还是出消息,
+	 * @param fd
+	 * @param task
+	 */
+	public void submitTask(int direct, int fd, Task task) {
+		ExecutorService[] group = TaskDirectConst.TASK_DIRECT_IN == direct ? clientInGroup : clientOutGroup;
+		group[fd & MOD].submit(task);
+	}
+	
+	/**
+	 * 
+	 * @param fd
+	 * @param task
+	 */
+	public void submitTask(int fd, Task task) {
+		this.submitTask(TaskDirectConst.TASK_DIRECT_OUT, fd, task);
 	}
 	
 	
@@ -141,6 +170,30 @@ public enum CenterServerManager {
 	}
 	
 	/**
+	 * 内部服务器注册消息
+	 * @param channel
+	 */
+	public void onInnerServerRegisterOpcode(Channel channel, List<Integer> opcodes) {
+		ServerOpcode serverOpcode = new ServerOpcode();
+		serverOpcode.addOpcodes(opcodes);
+		channel.attr(SERVER_OPCODE).set(serverOpcode);
+		logger.devLog("add opcodes fd = {} opcodes = {}", channel.attr(CHANNEL_ID).get(), Arrays.toString(opcodes.toArray()));
+	}
+	
+	
+	public void sendToInnerServerWhenRegisted(Packet packet) {
+		int opcode = packet.getOpcode();
+		for (Entry<Integer, Channel> entry : innerChannelHash.entrySet()) {
+			Channel channel = entry.getValue();
+			ServerOpcode so = channel.attr(SERVER_OPCODE).get();
+			if (so.contains(opcode)) {
+				channel.writeAndFlush(packet);
+			}
+		}
+	}
+	
+	
+	/**
 	 * 内部服务器断开连接了
 	 * @param channel
 	 */
@@ -184,43 +237,8 @@ public enum CenterServerManager {
 	 * @param channel
 	 */
 	private void indentityServer(Channel channel) {
-		logger.devLog("identity center to gate");
 		IdentityServerMsg ism = new IdentityServerMsg();
 		ism.setServerType(IdentityConst.SERVER_TYPE_CENTER);
 		channel.writeAndFlush(ism);
 	}
-	
-//	public void sendMsgToInner(Coder coder) {
-////		int opcode = coder.getOpcode();
-////		for (Entry<Byte, Set<Integer>> entry : serverOpcodeHash.entrySet()) {
-////			if (entry.getValue().contains(opcode)) {
-////				sendMsgByFd(entry.getKey(), coder);
-////			}
-////		}
-//	}
-//	
-//	public void regOpcode(Channel channel, List<Integer> opcodes) {
-////		byte id = getChannelId(channel);
-////		Set<Integer> opcodeSet = new HashSet<>();
-////		opcodeSet.addAll(opcodes);
-////		serverOpcodeHash.put(id, opcodeSet);
-//	}
-	
-//	private Channel getChannelByFd(int fd) {
-//		if (fd == MsgConst.MSG_TO_GATE) {
-//			return gateChannel;
-//		}
-//		return innerChannelHash.get(fd);
-//	}
-//	
-//	public void sendMsgByFd(int fd, Coder coder) {
-//		Channel channel = getChannelByFd(fd);
-//		sendMsg(channel, coder);
-//	}
-//	
-//	public void sendMsg(Channel channel, Coder coder) {
-//		if (channel != null && !channel.isActive()) {
-//			channel.writeAndFlush(coder);
-//		}
-//	}
 }

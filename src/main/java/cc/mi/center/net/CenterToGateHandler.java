@@ -1,6 +1,7 @@
 package cc.mi.center.net;
 
 import cc.mi.center.server.CenterServerManager;
+import cc.mi.center.task.DealClientDataTask;
 import cc.mi.core.handler.ChannelHandlerGenerator;
 import cc.mi.core.log.CustomLogger;
 import cc.mi.core.packet.Packet;
@@ -18,7 +19,7 @@ public class CenterToGateHandler extends SimpleChannelInboundHandler<Packet> imp
 	
 	@Override
 	public void channelRead0(final ChannelHandlerContext ctx, final Packet msg) throws Exception {
-		
+		CenterServerManager.INSTANCE.submitTask(0, new DealClientDataTask(ctx.channel(), msg));
 	}
 
 	@Override
