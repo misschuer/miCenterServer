@@ -18,5 +18,4 @@ public class DealClientDataTask extends AbstractCoderTask {
 		CenterServerManager.INSTANCE.invokeHandler(channel, coder);
 		CenterServerManager.INSTANCE.sendToInnerServerWhenRegisted(coder);
 	}
-
 }

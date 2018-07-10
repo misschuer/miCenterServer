@@ -22,7 +22,7 @@ public class CenterHandler extends SimpleChannelInboundHandler<Packet> implement
 		if (fd > 0) {
 			// send to inner server
 		} else {
-			CenterServerManager.INSTANCE.submitTask(fd, new DealInnerDataTask(ctx.channel(), msg));
+			CenterServerManager.INSTANCE.dealBinlogData(ctx.channel(), msg);
 		}
 	}
 

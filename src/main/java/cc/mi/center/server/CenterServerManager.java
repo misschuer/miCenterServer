@@ -12,8 +12,10 @@ import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
+import cc.mi.center.task.DealBinlogDataTask;
+import cc.mi.center.task.DealClientDataTask;
+import cc.mi.center.task.SendToInnerTask;
 import cc.mi.core.constance.IdentityConst;
-import cc.mi.core.constance.TaskDirectConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.generate.msg.IdentityServerMsg;
 import cc.mi.core.generate.msg.ServerStartFinishMsg;
@@ -31,8 +33,7 @@ public enum CenterServerManager {
 	
 	// 逻辑线程组 给它进行负载均衡
 	// 还能保证每个客户端的消息一定是有序的
-	private final ExecutorService[] clientInGroup;
-	private final ExecutorService[] clientOutGroup;
+	private final ExecutorService[] clientGroup;
 	private static final int GROUP_SIZE = 4;
 	private static final int MOD = GROUP_SIZE - 1;
 	
@@ -53,14 +54,9 @@ public enum CenterServerManager {
 	
 	private CenterServerManager() {
 		// 初始化线程组, 数量一定要2的幂, 否则会导致分配线程逻辑错误
-		clientInGroup = new ExecutorService[GROUP_SIZE];
+		clientGroup = new ExecutorService[GROUP_SIZE];
 		for (int i = 0; i< GROUP_SIZE; ++ i) {
-			clientInGroup[ i ] = Executors.newFixedThreadPool(1);
-		}
-		
-		clientOutGroup = new ExecutorService[GROUP_SIZE];
-		for (int i = 0; i< GROUP_SIZE; ++ i) {
-			clientOutGroup[ i ] = Executors.newFixedThreadPool(1);
+			clientGroup[ i ] = Executors.newFixedThreadPool(1);
 		}
 		
 		handlers[Opcodes.MSG_SERVERREGOPCODE] = new RegOpcodeHandler();
@@ -78,24 +74,12 @@ public enum CenterServerManager {
 
 	/**
 	 * 
-	 * @param direct 朝向, 是网关服进消息还是出消息,
-	 * @param fd
-	 * @param task
-	 */
-	public void submitTask(int direct, int fd, Task task) {
-		ExecutorService[] group = TaskDirectConst.TASK_DIRECT_IN == direct ? clientInGroup : clientOutGroup;
-		group[fd & MOD].submit(task);
-	}
-	
-	/**
-	 * 
 	 * @param fd
 	 * @param task
 	 */
 	public void submitTask(int fd, Task task) {
-		this.submitTask(TaskDirectConst.TASK_DIRECT_OUT, fd, task);
+		clientGroup[fd & MOD].submit(task);
 	}
-	
 	
 	/**
 	 * 只需要登录服, 应用服,场景服,(日志服非必须)
@@ -230,6 +214,29 @@ public enum CenterServerManager {
 			return;
 		}
 		throw new RuntimeException("与网关服断开连接, 但是断开的channel不是this.gateChannel");
+	}
+	
+	public void receiveDataFromGate(Packet packet) {
+		int fd = packet.getFD();
+		CenterServerManager.INSTANCE.submitTask(fd, new DealClientDataTask(null, packet));
+	}
+	
+	/**
+	 * 
+	 * @param channel
+	 * @param packet
+	 */
+	public void dealBinlogData(Channel channel, Packet packet) {
+		int fd = this.getChannelFd(channel);
+		// 这里可能会有多个服一起同步的情况需要有先后顺序
+		this.submitTask(0, new DealBinlogDataTask(fd, packet));
+	}
+	
+	public void sendToInnerServer(int fd, Packet packet) {
+		Channel channel = innerChannelHash.get(fd);
+		if (channel != null) {
+			this.submitTask(fd, new SendToInnerTask(channel, packet));
+		}
 	}
 	
 	/**
