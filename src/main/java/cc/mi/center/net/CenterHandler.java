@@ -1,7 +1,6 @@
 package cc.mi.center.net;
 
 import cc.mi.center.server.CenterServerManager;
-import cc.mi.center.task.DealInnerDataTask;
 import cc.mi.core.handler.ChannelHandlerGenerator;
 import cc.mi.core.log.CustomLogger;
 import cc.mi.core.packet.Packet;

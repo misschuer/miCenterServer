@@ -12,6 +12,6 @@ public class DealBinlogDataTask extends AbstractCoderTask {
 	
 	@Override
 	protected void doTask() {
-		
+		//TODO: 不会同步自己发来的数据
 	}
 }

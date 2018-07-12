@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import cc.mi.center.handler.AddTagWatchCallHandler;
+import cc.mi.center.handler.AddWatchCallHandler;
 import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
@@ -63,6 +65,8 @@ public enum CenterServerManager {
 		handlers[Opcodes.MSG_CREATECONNECTION] = new CreateConnectionHandler();
 		handlers[Opcodes.MSG_DESTROYCONNECTION] = new DestroyConnectionHandler();
 		handlers[Opcodes.MSG_IDENTITYSERVERMSG] = new IdentityServerTypeHandler();
+		handlers[Opcodes.MSG_ADDWATCHANDCALL] = new AddWatchCallHandler();
+		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL] = new AddTagWatchCallHandler();
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
