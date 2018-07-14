@@ -65,7 +65,6 @@ public enum CenterServerManager {
 	private final BinlogWatcher outerWatcher = new BinlogWatcher();
 	// 对象管理
 	private final CenterObjectManager objManager = new CenterObjectManager();
-	
 	private CenterServerManager() {
 		// 初始化线程组, 数量一定要2的幂, 否则会导致分配线程逻辑错误
 		clientGroup = new ExecutorService[GROUP_SIZE];
@@ -290,7 +289,6 @@ public enum CenterServerManager {
 		ism.setServerType(IdentityConst.SERVER_TYPE_CENTER);
 		channel.writeAndFlush(ism);
 	}
-	
 	// 添加检测消息
 	private void addWatch(BinlogWatcher watcher, int fd, String binlogId) {
 		watcher.addWatch(fd, binlogId);
