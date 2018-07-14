@@ -9,7 +9,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import cc.mi.center.handler.AddTagWatchCallHandler;
+import cc.mi.center.handler.AddTagWatchHandler;
 import cc.mi.center.handler.AddWatchCallHandler;
+import cc.mi.center.handler.AddWatchHandler;
 import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
@@ -25,6 +27,7 @@ import cc.mi.core.handler.Handler;
 import cc.mi.core.log.CustomLogger;
 import cc.mi.core.packet.Packet;
 import cc.mi.core.task.base.Task;
+import cc.mi.core.utils.BinlogWatcher;
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
 
@@ -46,6 +49,8 @@ public enum CenterServerManager {
 	
 	// 内部服务器通道列表
 	private final Map<Integer, Channel> innerChannelHash = new ConcurrentHashMap<>();
+	// 内部服务器是否准备完成
+	private final Map<Integer, Integer> innerServerReady = new ConcurrentHashMap<>();
 	
 	// 句柄
 	private final Handler[] handlers = new Handler[1<<6];
@@ -54,6 +59,13 @@ public enum CenterServerManager {
 	
 	private boolean centerBootstrap = false;
 	
+	// 内部服务器的消息监听
+	private final BinlogWatcher innerWatcher = new BinlogWatcher();
+	// 客户端的消息监听
+	private final BinlogWatcher outerWatcher = new BinlogWatcher();
+	// 对象管理
+	private final CenterObjectManager objManager = new CenterObjectManager();
+	
 	private CenterServerManager() {
 		// 初始化线程组, 数量一定要2的幂, 否则会导致分配线程逻辑错误
 		clientGroup = new ExecutorService[GROUP_SIZE];
@@ -61,12 +73,14 @@ public enum CenterServerManager {
 			clientGroup[ i ] = Executors.newFixedThreadPool(1);
 		}
 		
-		handlers[Opcodes.MSG_SERVERREGOPCODE] = new RegOpcodeHandler();
-		handlers[Opcodes.MSG_CREATECONNECTION] = new CreateConnectionHandler();
-		handlers[Opcodes.MSG_DESTROYCONNECTION] = new DestroyConnectionHandler();
-		handlers[Opcodes.MSG_IDENTITYSERVERMSG] = new IdentityServerTypeHandler();
-		handlers[Opcodes.MSG_ADDWATCHANDCALL] = new AddWatchCallHandler();
-		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL] = new AddTagWatchCallHandler();
+		handlers[Opcodes.MSG_SERVERREGOPCODE]		= new RegOpcodeHandler();
+		handlers[Opcodes.MSG_CREATECONNECTION]		= new CreateConnectionHandler();
+		handlers[Opcodes.MSG_DESTROYCONNECTION]		= new DestroyConnectionHandler();
+		handlers[Opcodes.MSG_IDENTITYSERVERMSG]		= new IdentityServerTypeHandler();
+		handlers[Opcodes.MSG_ADDWATCHANDCALL]		= new AddWatchCallHandler();
+		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL]	= new AddTagWatchCallHandler();
+		handlers[Opcodes.MSG_ADDWATCH]				= new AddWatchHandler();
+		handlers[Opcodes.MSG_ADDTAGWATCH]			= new AddTagWatchHandler();
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
@@ -91,19 +105,19 @@ public enum CenterServerManager {
 	private void checkAllServerFound() {
 		int servers = 3;
 		boolean vist = true;
-		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_LOGIN)) {
+		if (!innerServerReady.containsKey(IdentityConst.SERVER_TYPE_LOGIN)) {
 			vist = false;
 		}
 		
-		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_APP)) {
+		if (!innerServerReady.containsKey(IdentityConst.SERVER_TYPE_APP)) {
 			vist = false;
 		}
 		
-		if (!innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_RECORD)) {
+		if (!innerServerReady.containsKey(IdentityConst.SERVER_TYPE_RECORD)) {
 			servers --;
 		}
 		
-		if (innerChannelHash.size() == servers) {
+		if (innerServerReady.size() <= servers) {
 			vist = false;
 		}
 		
@@ -125,6 +139,11 @@ public enum CenterServerManager {
 		if (this.gateChannel != null && this.gateChannel.isActive()) {
 			this.gateChannel.writeAndFlush(msg);
 		}
+	}
+	
+	public boolean isServerReady(int fd) {
+		Integer val = this.innerServerReady.get(fd);
+		return val != null && val == 1;
 	}
 	
 	/**
@@ -153,7 +172,25 @@ public enum CenterServerManager {
 		channel.attr(CHANNEL_ID).set(fd);
 		innerChannelHash.put(fd, channel);
 		
+		// 有连接 但是没准备好
+		innerServerReady.put(fd, 0);
+		
 		logger.devLog("identity fd = {} serverType = {}", fd, serverType);
+	}
+	
+	public void onInnerServerReady(Channel channel) {
+		int fd = this.getChannelFd(channel);
+		if (!innerServerReady.containsKey(fd)) {
+			logger.errorLog("inner server not connected why on feady? fd = {}", fd);
+			channel.close();
+			return;
+		}
+		int val = innerServerReady.get(fd);
+		if (val > 0) {
+			logger.errorLog("inner server repeat ready, fd = {}", fd);
+			channel.close();
+			return;
+		}
 		this.checkAllServerFound();
 	}
 	
@@ -187,7 +224,8 @@ public enum CenterServerManager {
 	 */
 	public void onInnerServertDisconnected(Channel channel) {
 		int fd = getChannelFd(channel);
-		innerChannelHash.remove(fd);
+		this.innerChannelHash.remove(fd);
+		this.innerServerReady.remove(fd);
 		this.checkAllServerFound();
 	}
 	
@@ -251,5 +289,52 @@ public enum CenterServerManager {
 		IdentityServerMsg ism = new IdentityServerMsg();
 		ism.setServerType(IdentityConst.SERVER_TYPE_CENTER);
 		channel.writeAndFlush(ism);
+	}
+	
+	// 添加检测消息
+	private void addWatch(BinlogWatcher watcher, int fd, String binlogId) {
+		watcher.addWatch(fd, binlogId);
+	}
+	
+	private void addTagWatch(BinlogWatcher watcher, int fd, String binlogOwnerId) {
+		watcher.addTagWatch(fd, binlogOwnerId);
+	}
+	
+	public void addInnerWatch(int fd, String binlogId) {
+		this.addWatch(this.innerWatcher, fd, binlogId);
+	}
+	
+	public void addInnerTagWatch(int fd, String binlogOwnerId) {
+		this.addTagWatch(this.innerWatcher, fd, binlogOwnerId);
+	}
+	
+	public void addInnerWatchAndCall(int fd, String binlogId) {
+		this.addInnerWatch(fd, binlogId);
+		Channel channel = innerChannelHash.get(fd);
+		objManager.sendBinlogData(channel, 0, binlogId);
+	}
+	
+	public void addInnerTagWatchAndCall(int fd, String binlogOwnerId) {
+		this.addInnerTagWatch(fd, binlogOwnerId);
+		Channel channel = innerChannelHash.get(fd);
+		objManager.sendOwnerAllBinlogData(channel, 0, binlogOwnerId);
+	}
+	
+	public void addOuterWatch(int fd, String binlogId) {
+		this.addWatch(this.outerWatcher, fd, binlogId);
+	}
+	
+	public void addOuterTagWatch(int fd, String binlogOwnerId) {
+		this.addTagWatch(this.outerWatcher, fd, binlogOwnerId);
+	}
+	
+	public void addOuterWatchAndCall(int fd, String binlogId) {
+		this.addOuterWatch(fd, binlogId);
+		objManager.sendBinlogData(this.gateChannel, fd, binlogId);
+	}
+	
+	public void addOuterTagWatchAndCall(int fd, String binlogOwnerId) {
+		this.addOuterTagWatch(fd, binlogOwnerId);
+		objManager.sendOwnerAllBinlogData(this.gateChannel, fd, binlogOwnerId);
 	}
 }
