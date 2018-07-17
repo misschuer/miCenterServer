@@ -415,7 +415,6 @@ public enum CenterServerManager {
 		return fdSet;
 	}
 	
-	
 	public void onBinlogDataRemoved(String guid) {
 		objManager.releaseObject(guid);
 	}
