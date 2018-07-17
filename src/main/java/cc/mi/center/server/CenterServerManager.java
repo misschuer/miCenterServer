@@ -16,13 +16,15 @@ import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
-import cc.mi.center.task.DealBinlogDataTask;
+import cc.mi.center.handler.StartReadyHandler;
 import cc.mi.center.task.DealClientDataTask;
+import cc.mi.center.task.DealInnerDataTask;
 import cc.mi.center.task.SendToInnerTask;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.generate.msg.IdentityServerMsg;
 import cc.mi.core.generate.msg.ServerStartFinishMsg;
+import cc.mi.core.generate.stru.BinlogInfo;
 import cc.mi.core.handler.Handler;
 import cc.mi.core.log.CustomLogger;
 import cc.mi.core.packet.Packet;
@@ -76,10 +78,12 @@ public enum CenterServerManager {
 		handlers[Opcodes.MSG_CREATECONNECTION]		= new CreateConnectionHandler();
 		handlers[Opcodes.MSG_DESTROYCONNECTION]		= new DestroyConnectionHandler();
 		handlers[Opcodes.MSG_IDENTITYSERVERMSG]		= new IdentityServerTypeHandler();
+		handlers[Opcodes.MSG_STARTREADY]			= new StartReadyHandler();
 		handlers[Opcodes.MSG_ADDWATCHANDCALL]		= new AddWatchCallHandler();
 		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL]	= new AddTagWatchCallHandler();
 		handlers[Opcodes.MSG_ADDWATCH]				= new AddWatchHandler();
 		handlers[Opcodes.MSG_ADDTAGWATCH]			= new AddTagWatchHandler();
+		
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
@@ -267,10 +271,10 @@ public enum CenterServerManager {
 	 * @param channel
 	 * @param packet
 	 */
-	public void dealBinlogData(Channel channel, Packet packet) {
-		int fd = this.getChannelFd(channel);
+	public void dealInnerData(Channel channel, Packet packet) {
+		// TODO: 需要处理服务器启动的时候 相互监听获得数据
 		// 这里可能会有多个服一起同步的情况需要有先后顺序
-		this.submitTask(0, new DealBinlogDataTask(fd, packet));
+		this.submitTask(0, new DealInnerDataTask(channel, packet));
 	}
 	
 	public void sendToInnerServer(int fd, Packet packet) {
@@ -334,5 +338,13 @@ public enum CenterServerManager {
 	public void addOuterTagWatchAndCall(int fd, String binlogOwnerId) {
 		this.addOuterTagWatch(fd, binlogOwnerId);
 		objManager.sendOwnerAllBinlogData(this.gateChannel, fd, binlogOwnerId);
+	}
+	
+	public void onBinlogDataUpdated(BinlogInfo binlogInfo) {
+		objManager.parseBinlogInfo(binlogInfo);
+	}
+	
+	public void onBinlogDataRemoved(String guid) {
+		objManager.releaseObject(guid);
 	}
 }

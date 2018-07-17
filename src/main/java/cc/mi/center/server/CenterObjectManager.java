@@ -5,12 +5,17 @@ import java.util.LinkedList;
 import java.util.List;
 
 import cc.mi.core.binlog.data.BinlogData;
+import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.msg.BinlogDataModify;
 import cc.mi.core.generate.stru.BinlogInfo;
 import cc.mi.core.server.ServerObjectManager;
 import io.netty.channel.Channel;
 
 public class CenterObjectManager extends ServerObjectManager {
+	
+	public CenterObjectManager() {
+		super(IdentityConst.SERVER_TYPE_CENTER);
+	}
 	
 	public void sendBinlogData(Channel channel, int fd, String binlogId) {
 		BinlogData binlogData = this.get(binlogId);

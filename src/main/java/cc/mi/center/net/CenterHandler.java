@@ -19,9 +19,9 @@ public class CenterHandler extends SimpleChannelInboundHandler<Packet> implement
 	public void channelRead0(final ChannelHandlerContext ctx, final Packet msg) throws Exception {
 		int fd = msg.getFD();
 		if (fd > 0) {
-			// send to inner server
+			CenterServerManager.INSTANCE.receiveDataFromGate(msg);
 		} else {
-			CenterServerManager.INSTANCE.dealBinlogData(ctx.channel(), msg);
+			CenterServerManager.INSTANCE.dealInnerData(ctx.channel(), msg);
 		}
 	}
 
