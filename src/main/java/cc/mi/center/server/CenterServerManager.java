@@ -19,6 +19,8 @@ import cc.mi.center.handler.AddWatchHandler;
 import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
+import cc.mi.center.handler.PutObjectHandler;
+import cc.mi.center.handler.PutObjectsHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
 import cc.mi.center.handler.StartReadyHandler;
 import cc.mi.center.task.DealClientDataTask;
@@ -88,6 +90,8 @@ public enum CenterServerManager {
 		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL]	= new AddTagWatchCallHandler();
 		handlers[Opcodes.MSG_ADDWATCH]				= new AddWatchHandler();
 		handlers[Opcodes.MSG_ADDTAGWATCH]			= new AddTagWatchHandler();
+		handlers[Opcodes.MSG_PUTOBJECT]				= new PutObjectHandler();
+		handlers[Opcodes.MSG_PUTOBJECTS]			= new PutObjectsHandler();
 		
 	}
 	
@@ -414,7 +418,6 @@ public enum CenterServerManager {
 		
 		return fdSet;
 	}
-	
 	
 	public void onBinlogDataRemoved(String guid) {
 		objManager.releaseObject(guid);

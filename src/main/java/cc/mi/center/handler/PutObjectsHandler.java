@@ -7,7 +7,7 @@ import cc.mi.core.packet.Packet;
 import cc.mi.core.server.ServerContext;
 import io.netty.channel.Channel;
 
-public class PutObjectSHandler extends HandlerImpl {
+public class PutObjectsHandler extends HandlerImpl {
 
 	@Override
 	public void handle(ServerContext player, Channel channel, Packet decoder) {
