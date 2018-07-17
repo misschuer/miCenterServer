@@ -1,9 +1,13 @@
 package cc.mi.center.server;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,13 +20,16 @@ import cc.mi.center.handler.CreateConnectionHandler;
 import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
-import cc.mi.center.task.DealBinlogDataTask;
+import cc.mi.center.handler.StartReadyHandler;
 import cc.mi.center.task.DealClientDataTask;
+import cc.mi.center.task.DealInnerDataTask;
 import cc.mi.center.task.SendToInnerTask;
 import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.Opcodes;
+import cc.mi.core.generate.msg.BinlogDataModify;
 import cc.mi.core.generate.msg.IdentityServerMsg;
 import cc.mi.core.generate.msg.ServerStartFinishMsg;
+import cc.mi.core.generate.stru.BinlogInfo;
 import cc.mi.core.handler.Handler;
 import cc.mi.core.log.CustomLogger;
 import cc.mi.core.packet.Packet;
@@ -76,10 +83,12 @@ public enum CenterServerManager {
 		handlers[Opcodes.MSG_CREATECONNECTION]		= new CreateConnectionHandler();
 		handlers[Opcodes.MSG_DESTROYCONNECTION]		= new DestroyConnectionHandler();
 		handlers[Opcodes.MSG_IDENTITYSERVERMSG]		= new IdentityServerTypeHandler();
+		handlers[Opcodes.MSG_STARTREADY]			= new StartReadyHandler();
 		handlers[Opcodes.MSG_ADDWATCHANDCALL]		= new AddWatchCallHandler();
 		handlers[Opcodes.MSG_ADDTAGWATCHANDCALL]	= new AddTagWatchCallHandler();
 		handlers[Opcodes.MSG_ADDWATCH]				= new AddWatchHandler();
 		handlers[Opcodes.MSG_ADDTAGWATCH]			= new AddTagWatchHandler();
+		
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
@@ -204,7 +213,10 @@ public enum CenterServerManager {
 		logger.devLog("add opcodes fd = {} opcodes = {}", channel.attr(CHANNEL_ID).get(), Arrays.toString(opcodes.toArray()));
 	}
 	
-	
+	/**
+	 * 发送给注册消息的内部服务器
+	 * @param packet
+	 */
 	public void sendToInnerServerWhenRegisted(Packet packet) {
 		int opcode = packet.getOpcode();
 		for (Entry<Integer, Channel> entry : innerChannelHash.entrySet()) {
@@ -215,8 +227,7 @@ public enum CenterServerManager {
 			}
 		}
 	}
-	
-	
+		
 	/**
 	 * 内部服务器断开连接了
 	 * @param channel
@@ -267,10 +278,10 @@ public enum CenterServerManager {
 	 * @param channel
 	 * @param packet
 	 */
-	public void dealBinlogData(Channel channel, Packet packet) {
-		int fd = this.getChannelFd(channel);
+	public void dealInnerData(Channel channel, Packet packet) {
+		// TODO: 需要处理服务器启动的时候 相互监听获得数据
 		// 这里可能会有多个服一起同步的情况需要有先后顺序
-		this.submitTask(0, new DealBinlogDataTask(fd, packet));
+		this.submitTask(0, new DealInnerDataTask(channel, packet));
 	}
 	
 	public void sendToInnerServer(int fd, Packet packet) {
@@ -334,5 +345,78 @@ public enum CenterServerManager {
 	public void addOuterTagWatchAndCall(int fd, String binlogOwnerId) {
 		this.addOuterTagWatch(fd, binlogOwnerId);
 		objManager.sendOwnerAllBinlogData(this.gateChannel, fd, binlogOwnerId);
+	}
+	
+	public void onBinlogDataUpdated(int fd, String ownerId, BinlogInfo binlogInfo) {
+		objManager.parseBinlogInfo(binlogInfo);
+		List<BinlogInfo> binlogInfoList = new ArrayList<>(1);
+		binlogInfoList.add(binlogInfo);
+		this.sendToOtherWhileNeedBinlogData(fd, ownerId, binlogInfoList);
+	}
+	
+	public void onBinlogDatasUpdated(int fd, String ownerId, List<BinlogInfo> binlogInfoList) {
+		for (BinlogInfo binlogInfo : binlogInfoList) {
+			objManager.parseBinlogInfo(binlogInfo);
+		}
+		this.sendToOtherWhileNeedBinlogData(fd, ownerId, binlogInfoList);
+	}
+	
+	/**
+	 * 发送给注册binlog数据的fd(包括内部服务器和外部服务器)
+	 * @param packet
+	 */
+	public void sendToOtherWhileNeedBinlogData(int fd, String ownerId, List<BinlogInfo> binlogInfoList) {
+		
+		String guid = binlogInfoList.get(0).getBinlogId();
+		
+		{
+			BinlogDataModify bdm = new BinlogDataModify();
+			bdm.setBinlogInfoList(binlogInfoList);
+			Set<Integer> innerFdSet = this.getFdSetWhoNeedData(this.innerWatcher, fd, ownerId, guid);
+			for (int sfd : innerFdSet) {
+				Channel channel = this.innerChannelHash.get(sfd);
+				channel.writeAndFlush(bdm);
+			}
+		}
+		
+		{
+			Set<Integer> outerFdSet = this.getFdSetWhoNeedData(this.outerWatcher, 0, ownerId, guid);
+			for (int sfd : outerFdSet) {
+				BinlogDataModify bdm = new BinlogDataModify();
+				bdm.setBinlogInfoList(binlogInfoList);
+				bdm.setFD(sfd);
+				this.gateChannel.writeAndFlush(bdm);
+			}
+		}
+	}
+	
+	private Set<Integer> getFdSetWhoNeedData(BinlogWatcher watcher, int fd, String ownerId, String guid) {
+		Set<Integer> fdSet = new HashSet<>();
+		{
+			Iterator<Integer> ioi = watcher.binOwnerWatchIterator(ownerId);
+			while (ioi.hasNext()) {
+				int sfd = ioi.next();
+				if (sfd != fd) {
+					fdSet.add(sfd);
+				}
+			}
+		}
+		
+		if (fdSet.size() == 0) {
+			Iterator<Integer> ii = watcher.binWatchIterator(guid);
+			while (ii.hasNext()) {
+				int sfd = ii.next();
+				if (sfd != fd) {
+					fdSet.add(sfd);
+				}
+			}
+		}
+		
+		return fdSet;
+	}
+	
+	
+	public void onBinlogDataRemoved(String guid) {
+		objManager.releaseObject(guid);
 	}
 }
