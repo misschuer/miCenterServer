@@ -203,6 +203,7 @@ public enum CenterServerManager {
 			channel.close();
 			return;
 		}
+		logger.devLog("server {} start ready", fd);
 		this.checkAllServerFound();
 	}
 	
@@ -313,23 +314,23 @@ public enum CenterServerManager {
 		watcher.addTagWatch(fd, binlogOwnerId);
 	}
 	
-	public void addInnerWatch(int fd, String binlogId) {
+	public void addInnerWatch(Channel channel, String binlogId) {
+		int fd = this.getChannelFd(channel);
 		this.addWatch(this.innerWatcher, fd, binlogId);
 	}
 	
-	public void addInnerTagWatch(int fd, String binlogOwnerId) {
+	public void addInnerTagWatch(Channel channel, String binlogOwnerId) {
+		int fd = this.getChannelFd(channel);
 		this.addTagWatch(this.innerWatcher, fd, binlogOwnerId);
 	}
 	
-	public void addInnerWatchAndCall(int fd, String binlogId) {
-		this.addInnerWatch(fd, binlogId);
-		Channel channel = innerChannelHash.get(fd);
+	public void addInnerWatchAndCall(Channel channel, String binlogId) {
+		this.addInnerWatch(channel, binlogId);
 		objManager.sendBinlogData(channel, 0, binlogId);
 	}
 	
-	public void addInnerTagWatchAndCall(int fd, String binlogOwnerId) {
-		this.addInnerTagWatch(fd, binlogOwnerId);
-		Channel channel = innerChannelHash.get(fd);
+	public void addInnerTagWatchAndCall(Channel channel, String binlogOwnerId) {
+		this.addInnerTagWatch(channel, binlogOwnerId);
 		objManager.sendOwnerAllBinlogData(channel, 0, binlogOwnerId);
 	}
 	

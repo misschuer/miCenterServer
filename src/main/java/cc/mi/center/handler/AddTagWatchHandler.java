@@ -18,7 +18,7 @@ public class AddTagWatchHandler extends HandlerImpl {
 			CenterServerManager.INSTANCE.addOuterTagWatch(fd, ownerId);
 			return;
 		}
-		CenterServerManager.INSTANCE.addInnerTagWatch(fd, ownerId);
+		CenterServerManager.INSTANCE.addInnerTagWatch(channel, ownerId);
 	}
 
 }

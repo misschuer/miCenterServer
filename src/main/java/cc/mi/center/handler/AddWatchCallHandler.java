@@ -18,7 +18,7 @@ public class AddWatchCallHandler extends HandlerImpl {
 			CenterServerManager.INSTANCE.addOuterWatchAndCall(fd, binId);
 			return;
 		}
-		CenterServerManager.INSTANCE.addInnerWatchAndCall(fd, binId);
+		CenterServerManager.INSTANCE.addInnerWatchAndCall(channel, binId);
 	}
 
 }
