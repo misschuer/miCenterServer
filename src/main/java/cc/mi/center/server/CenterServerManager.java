@@ -420,6 +420,10 @@ public enum CenterServerManager {
 		return fdSet;
 	}
 	
+	/**
+	 * 暂时不知道用来干嘛
+	 * @param guid
+	 */
 	public void onBinlogDataRemoved(String guid) {
 		objManager.releaseObject(guid);
 	}
