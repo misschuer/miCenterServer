@@ -52,4 +52,9 @@ public class CenterObjectManager extends ServerObjectManager {
 		
 		channel.writeAndFlush(bdm);
 	}
+
+	@Override
+	protected BinlogData createBinlogData(String guid) {
+		return new BinlogData(1 << 6, 1 << 6);
+	}
 }
