@@ -10,7 +10,7 @@ import io.netty.channel.Channel;
 public class RegOpcodeHandler extends HandlerImpl {
 
 	@Override
-	public void handle(ServerContext player, Channel channel, Packet decoder) {
+	public void handle(ServerContext nil, Channel channel, Packet decoder) {
 		ServerRegOpcode coder = (ServerRegOpcode) decoder;
 		CenterServerManager.INSTANCE.onInnerServerRegisterOpcode(channel, coder.getOpcodes());
 	}

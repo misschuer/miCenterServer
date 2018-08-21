@@ -10,7 +10,7 @@ import io.netty.channel.Channel;
 public class AddWatchHandler extends HandlerImpl {
 
 	@Override
-	public void handle(ServerContext player, Channel channel, Packet decoder) {
+	public void handle(ServerContext nil, Channel channel, Packet decoder) {
 		AddWatch packet = (AddWatch)decoder;
 		int fd = packet.getFd();
 		String binId = packet.getGuidType();

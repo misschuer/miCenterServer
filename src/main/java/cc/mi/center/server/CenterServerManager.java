@@ -30,6 +30,7 @@ import cc.mi.core.constance.IdentityConst;
 import cc.mi.core.generate.Opcodes;
 import cc.mi.core.generate.msg.BinlogDataModify;
 import cc.mi.core.generate.msg.IdentityServerMsg;
+import cc.mi.core.generate.msg.InnerServerConnList;
 import cc.mi.core.generate.msg.ServerStartFinishMsg;
 import cc.mi.core.generate.stru.BinlogInfo;
 import cc.mi.core.handler.Handler;
@@ -142,6 +143,35 @@ public enum CenterServerManager {
 		if (vist != this.centerBootstrap) {
 			this.centerBootstrap = vist;
 			this.noticeGateBootstrap();
+		}
+		
+		
+		
+		// 通知所有内部服务器所有的连接fd
+//		public static final int SERVER_TYPE_LOGIN	= 3;
+//		public static final int SERVER_TYPE_APP	= 4;
+//		public static final int SERVER_TYPE_RECORD	= 5;
+//		public static final int SERVER_TYPE_SCENE  = 6;
+		
+		int appConn    = this.innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_APP) ? IdentityConst.SERVER_TYPE_APP : 0;
+		int loginConn  = this.innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_LOGIN) ? IdentityConst.SERVER_TYPE_LOGIN : 0;
+		int recordConn = this.innerChannelHash.containsKey(IdentityConst.SERVER_TYPE_RECORD) ? IdentityConst.SERVER_TYPE_RECORD : 0;
+		List<Integer> sceneConns = new ArrayList<>();
+		for (int fd : this.innerChannelHash.keySet()) {
+			if (fd >= IdentityConst.SERVER_TYPE_SCENE) {
+				sceneConns.add(fd);
+			}
+		}
+		// 只要不修改它, 异步也没关系
+		InnerServerConnList isc = new InnerServerConnList();
+		isc.setAppConn(appConn);
+		isc.setLoginConn(loginConn);
+		isc.setRecordConn(recordConn);
+		isc.setSceneConns(sceneConns);
+		
+		for (Entry<Integer, Channel> entry : this.innerChannelHash.entrySet()) {
+			Channel channel = entry.getValue();
+			channel.writeAndFlush(isc);
 		}
 	}
 	
