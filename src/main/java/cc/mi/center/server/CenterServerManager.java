@@ -16,9 +16,8 @@ import cc.mi.center.handler.AddTagWatchCallHandler;
 import cc.mi.center.handler.AddTagWatchHandler;
 import cc.mi.center.handler.AddWatchCallHandler;
 import cc.mi.center.handler.AddWatchHandler;
-import cc.mi.center.handler.CreateConnectionHandler;
-import cc.mi.center.handler.DestroyConnectionHandler;
 import cc.mi.center.handler.IdentityServerTypeHandler;
+import cc.mi.center.handler.PlayerLoginHandler;
 import cc.mi.center.handler.PutObjectHandler;
 import cc.mi.center.handler.PutObjectsHandler;
 import cc.mi.center.handler.RegOpcodeHandler;
@@ -83,8 +82,6 @@ public enum CenterServerManager {
 		}
 		
 		handlers[Opcodes.MSG_SERVERREGOPCODE]		= new RegOpcodeHandler();
-		handlers[Opcodes.MSG_CREATECONNECTION]		= new CreateConnectionHandler();
-		handlers[Opcodes.MSG_DESTROYCONNECTION]		= new DestroyConnectionHandler();
 		handlers[Opcodes.MSG_IDENTITYSERVERMSG]		= new IdentityServerTypeHandler();
 		handlers[Opcodes.MSG_STARTREADY]			= new StartReadyHandler();
 		handlers[Opcodes.MSG_ADDWATCHANDCALL]		= new AddWatchCallHandler();
@@ -93,7 +90,7 @@ public enum CenterServerManager {
 		handlers[Opcodes.MSG_ADDTAGWATCH]			= new AddTagWatchHandler();
 		handlers[Opcodes.MSG_PUTOBJECT]				= new PutObjectHandler();
 		handlers[Opcodes.MSG_PUTOBJECTS]			= new PutObjectsHandler();
-		
+		handlers[Opcodes.MSG_PLAYERLOGIN]			= new PlayerLoginHandler();
 	}
 	
 	public void invokeHandler(Channel channel, Packet decoder) {
