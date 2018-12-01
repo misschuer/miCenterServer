@@ -17,7 +17,7 @@ public class CenterHandler extends SimpleChannelInboundHandler<Packet> implement
 	
 	@Override
 	public void channelRead0(final ChannelHandlerContext ctx, final Packet msg) throws Exception {
-		int fd = msg.getFD();
+		int fd = msg.getBaseFd();
 		if (fd > 0) {
 			CenterServerManager.INSTANCE.receiveDataFromGate(msg);
 		} else {

@@ -301,7 +301,7 @@ public enum CenterServerManager {
 	}
 	
 	public void receiveDataFromGate(Packet packet) {
-		int fd = packet.getFD();
+		int fd = packet.getBaseFd();
 		CenterServerManager.INSTANCE.submitTask(fd, new DealClientDataTask(null, packet));
 	}
 	
@@ -416,7 +416,7 @@ public enum CenterServerManager {
 			for (int sfd : outerFdSet) {
 				BinlogDataModify bdm = new BinlogDataModify();
 				bdm.setBinlogInfoList(binlogInfoList);
-				bdm.setFD(sfd);
+				bdm.setBaseFd(sfd);
 				this.gateChannel.writeAndFlush(bdm);
 			}
 		}

@@ -28,7 +28,7 @@ public class CenterObjectManager extends ServerObjectManager {
 			binlogInfoList.add(binlogInfo);
 			bdm.setBinlogInfoList(binlogInfoList);
 			// 如果是发给客户端的需要设置
-			bdm.setFD(fd);
+			bdm.setBaseFd(fd);
 			
 			channel.writeAndFlush(bdm);
 		}
@@ -48,7 +48,7 @@ public class CenterObjectManager extends ServerObjectManager {
 		}
 		bdm.setBinlogInfoList(binlogInfoList);
 		// 如果是发给客户端的需要设置
-		bdm.setFD(fd);
+		bdm.setBaseFd(fd);
 		
 		channel.writeAndFlush(bdm);
 	}
