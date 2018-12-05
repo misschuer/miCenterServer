@@ -379,6 +379,10 @@ public enum CenterServerManager {
 		objManager.sendOwnerAllBinlogData(this.gateChannel, fd, binlogOwnerId);
 	}
 	
+	public void delTagWatch(String binlogOwnerId) {
+		this.innerWatcher.remove(binlogOwnerId);
+	}
+	
 	public void onBinlogDataUpdated(int fd, String ownerId, BinlogInfo binlogInfo) {
 		objManager.parseBinlogInfo(binlogInfo);
 		List<BinlogInfo> binlogInfoList = new ArrayList<>(1);
