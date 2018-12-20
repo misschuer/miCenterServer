@@ -1,5 +1,8 @@
 package cc.mi.center;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import cc.mi.center.config.ServerConfig;
 import cc.mi.center.net.CenterHandler;
 import cc.mi.center.net.CenterToGateHandler;
@@ -13,44 +16,59 @@ public class Startup {
 	private static void start() throws NumberFormatException, Exception {
 		ServerConfig.loadConfig();
     	
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						ClientCore.INSTANCE.start(ServerConfig.getGateIp(), ServerConfig.getGatePort(), new CenterToGateHandler());
-					} catch (Exception e) {
-					} finally {
-						logger.devLog("连接网关服错误,系统将在1秒钟后重新连接");
+		connectGate();
+		
+		bindInnerServer();
+	}
+	
+	private static void connectGate() {
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.execute(
+			new Runnable() {
+				@Override
+				public void run() {
+					while (true) {
 						try {
-							Thread.sleep(1000);
+							ClientCore.INSTANCE.start(ServerConfig.getGateIp(), ServerConfig.getGatePort(), new CenterToGateHandler());
 						} catch (Exception e) {
-							e.printStackTrace();
+							logger.errorLog(e.getMessage());
+						} finally {
+							logger.errorLog("连接网关服错误,系统将在1秒钟后重新连接");
+							try {
+								Thread.sleep(1000);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 					}
 				}
 			}
-		}, "center-to-gate").start();
-		
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						ServerCore.INSTANCE.run(ServerConfig.getCenterPort(), new CenterHandler(), IdentityConst.SERVER_TYPE_CENTER);
-					} catch (Exception e) {
-					} finally {
-						logger.devLog("监听内部服务器端口发生错误,系统将在1秒钟后重新执行");
+		);
+	}
+	
+	private static void bindInnerServer() {
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.execute(
+			new Runnable() {
+				@Override
+				public void run() {
+					while (true) {
 						try {
-							Thread.sleep(1000);
+							ServerCore.INSTANCE.run(ServerConfig.getCenterPort(), new CenterHandler(), IdentityConst.SERVER_TYPE_CENTER);
 						} catch (Exception e) {
-							e.printStackTrace();
+							logger.errorLog(e.getMessage());
+						} finally {
+							logger.errorLog("监听内部服务器端口发生错误,系统将在1秒钟后重新执行");
+							try {
+								Thread.sleep(1000);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 					}
 				}
 			}
-		}, "center-for-inner").start();
-		
+		);
 	}
 
 	public static void main(String[] args) throws NumberFormatException, Exception {
